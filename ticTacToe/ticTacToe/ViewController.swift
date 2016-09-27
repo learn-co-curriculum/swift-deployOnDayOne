@@ -13,70 +13,61 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
-        let winLabel = self.view.viewWithTag(10) as? UILabel
-        winLabel?.text = "Start Playing"
+        initGame()
     }
     
     
-
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
 
     @IBAction func touchedSquare(_ sender: UIButton) {
-        switch sender.tag {
-        case 1:
-            print("touched 1")
-            onClickSquare(tagName:1, button: sender);
-        case 2:
-            print("touched 2")
-            onClickSquare(tagName:2, button: sender);
-        case 3:
-            print("touched 3")
-            onClickSquare(tagName:3, button: sender);
-        case 4:
-            print("touched 4")
-            onClickSquare(tagName:4, button: sender);
-        case 5:
-            print("touched 5")
-            onClickSquare(tagName:5, button: sender);
-        case 6:
-            print("touched 6")
-            onClickSquare(tagName:6, button: sender);
-        case 7:
-            print("touched 7")
-            onClickSquare(tagName:7, button: sender);
-        case 8:
-            print("touched 8")
-            onClickSquare(tagName:8, button: sender);
-        case 9:
-            print("touched 9")
-            onClickSquare(tagName:9, button: sender);
-        default:
-            print("default")
-            
-        }
+        //print("touched \(sender.tag)")
+        onClickSquare(tagName:sender.tag, button: sender);
     }
     
-    var gameStatus: [Int: String] = [1:"",2:"", 3:"", 4:"", 5:"", 6:"", 7:"", 8:"", 9:""]
+    @IBAction func playAgain(_ sender: UIButton) {
+        //print("touched \(sender.tag)")
+        initGame();
+    }
     
+    var gameStatus: [Int: String] = [:]
+    
+    func initGame(){
+        gameStatus = [1:"",2:"", 3:"", 4:"", 5:"", 6:"", 7:"", 8:"", 9:""]
+        let allSquares = Array(gameStatus.keys)
+        for square in allSquares {
+            let button = self.view.viewWithTag(square) as? UIButton
+            if let button = button {
+                button.isEnabled = true
+                button.setTitle("", for: UIControlState.normal)
+                button.setTitleColor(UIColor.brown, for: UIControlState.normal)
+            }
+        }
+        // disable play again button (tag = 20)
+        let button = self.view.viewWithTag(20) as? UIButton
+        if let button = button {
+            button.isEnabled = false
+        }
+        // set label
+        let winLabel = self.view.viewWithTag(10) as? UILabel
+        if let winLabel = winLabel {
+            winLabel.text = "Start Playing"
+        }
+    }
+
     func onClickSquare (tagName: Int, button: UIButton) {
         
         button.setTitle("x", for: UIControlState.normal)
         button.isEnabled = false
         gameStatus[tagName] = "x"
         
-        print("game status before machine play: ")
-        print(gameStatus)
-        
-        let machinePlayResults = machinePlay()
-        print("machinePlayResults: \(machinePlayResults)")
-        findWinner()
-        
-        print("game status after machine play: ")
-        print(gameStatus)
-
+        if findWinner() {
+            gameOver()
+        } else {
+            machinePlay()
+        }
     }
     
     func gameOver(){
@@ -86,11 +77,19 @@ class ViewController: UIViewController {
         let unusedSquaresInts: [Int] = Array(unusedSquaresDict.keys)
         for unusedSquare in unusedSquaresInts {
             let button = self.view.viewWithTag(unusedSquare) as? UIButton
-            button?.isEnabled = false
+            if let button = button {
+                button.isEnabled = false
+            }
         }
+        // enabled play again button (tag = 20)
+        let button = self.view.viewWithTag(20) as? UIButton
+        if let button = button {
+            button.isEnabled = true
+        }
+        
     }
     
-    func machinePlay() -> Bool {
+    func machinePlay(){
         // 1. get an array of unused squares
         var unusedSquaresDict = gameStatus // copy the original dictionary
         unusedSquaresDict.forEach { if $1 != "" { unusedSquaresDict[$0] = nil } }  // filter out values that do not match
@@ -111,16 +110,29 @@ class ViewController: UIViewController {
             gameStatus[randomSquare] = "o"
             let randomSquareInt = Int(randomSquare)
             let button = self.view.viewWithTag(randomSquareInt) as? UIButton
-            button?.setTitle("o", for: UIControlState.normal)
-            button?.isEnabled = false
-        
-            return true
-        } else {
-            return false
+            if let button = button {
+                button.setTitle("o", for: UIControlState.normal)
+                button.isEnabled = false
+            }
+        }
+        if findWinner() {
+            gameOver()
         }
     }
     
-    func findWinner(){
+    func setTextColor(winSquares squareTags:[Int], color newColor:UIColor){
+        // change the button color to indicate the win
+        for squareTag in squareTags {
+            let button = self.view.viewWithTag(squareTag) as? UIButton
+            //let winColor = UIColor.newColor
+            if let button = button {
+                button.setTitleColor(newColor, for: UIControlState.normal)
+            }
+        }
+    }
+
+    
+    func findWinner() -> Bool {
         var xStatus = gameStatus // copy the original dictionary
         xStatus.forEach { if $1 != "x" { xStatus[$0] = nil } }  // filter out values that do not match
         var xStatusKeys = Array(xStatus.keys)
@@ -131,69 +143,93 @@ class ViewController: UIViewController {
         var oStatusKeys = Array(oStatus.keys)
         oStatusKeys.sort();
         
-        print("xStatusKeys: ")
-        print(xStatusKeys)
+        // need an array of all keys used to determine if the game is a cat
+        var oxStatusKeys: [Int]  = []
+        oxStatusKeys = xStatusKeys + oStatusKeys
         
-        print("oStatusKeys: ")
-        print(oStatusKeys)
+        var stopPlay = false
         
+        print("xStatusKeys: \(xStatusKeys)")
+        print("oStatusKeys: \(oStatusKeys)")
+
         let winLabel = self.view.viewWithTag(10) as? UILabel
         
         let appWins = "Game Over, The App wins!"
         let userWins = "Game Over, You win!"
+        let noWinner = "Cat, play again!"
+        let winColor = UIColor.red
         
         if xStatusKeys.contains(1) && xStatusKeys.contains(2) && xStatusKeys.contains(3) {
             winLabel?.text = userWins
-            gameOver()
+            setTextColor(winSquares: [1,2,3], color: winColor)
+            stopPlay = true
         } else if xStatusKeys.contains(4) && xStatusKeys.contains(5) && xStatusKeys.contains(6) {
             winLabel?.text = userWins
-            gameOver()
+            setTextColor(winSquares: [4,5,6], color: winColor)
+            stopPlay = true
         } else if xStatusKeys.contains(7) && xStatusKeys.contains(8) && xStatusKeys.contains(9) {
             winLabel?.text = userWins
-            gameOver()
+            setTextColor(winSquares: [7,8,9], color: winColor)
+            stopPlay = true
         } else if xStatusKeys.contains(3) && xStatusKeys.contains(5) && xStatusKeys.contains(7) {
             winLabel?.text = userWins
-            gameOver()
+            setTextColor(winSquares: [3,5,7], color: winColor)
+            stopPlay = true
         } else if xStatusKeys.contains(1) && xStatusKeys.contains(5) && xStatusKeys.contains(9) {
             winLabel?.text = userWins
-            gameOver()
+            setTextColor(winSquares: [1,5,9], color: winColor)
+            stopPlay = true
         } else if xStatusKeys.contains(1) && xStatusKeys.contains(4) && xStatusKeys.contains(7) {
             winLabel?.text = userWins
-            gameOver()
+            setTextColor(winSquares: [1,4,7], color: winColor)
+            stopPlay = true
         } else if xStatusKeys.contains(2) && xStatusKeys.contains(5) && xStatusKeys.contains(8) {
             winLabel?.text = userWins
-            gameOver()
+            setTextColor(winSquares: [2,5,8], color: winColor)
+            stopPlay = true
         } else if xStatusKeys.contains(3) && xStatusKeys.contains(6) && xStatusKeys.contains(9) {
             winLabel?.text = userWins
-            gameOver()
+            setTextColor(winSquares: [3,6,9], color: winColor)
+            stopPlay = true
         } else if oStatusKeys.contains(1) && oStatusKeys.contains(2) && oStatusKeys.contains(3) {
-            winLabel?.text = userWins
-            gameOver()
+            winLabel?.text = appWins
+            setTextColor(winSquares: [1,2,3], color: winColor)
+            stopPlay = true
         } else if oStatusKeys.contains(4) && oStatusKeys.contains(5) && oStatusKeys.contains(6) {
             winLabel?.text = appWins
-            gameOver()
+            setTextColor(winSquares: [4,5,6], color: winColor)
+            stopPlay = true
         } else if oStatusKeys.contains(7) && oStatusKeys.contains(8) && oStatusKeys.contains(9) {
             winLabel?.text = appWins
-            gameOver()
+            setTextColor(winSquares: [7,8,9], color: winColor)
+            stopPlay = true
         } else if oStatusKeys.contains(3) && oStatusKeys.contains(5) && oStatusKeys.contains(7) {
             winLabel?.text = appWins
-            gameOver()
+            setTextColor(winSquares: [3,5,7], color: winColor)
+            stopPlay = true
         } else if oStatusKeys.contains(1) && oStatusKeys.contains(5) && oStatusKeys.contains(9) {
             winLabel?.text = appWins
-            gameOver()
+            setTextColor(winSquares: [1,5,7], color: winColor)
+            stopPlay = true
         } else if oStatusKeys.contains(1) && oStatusKeys.contains(4) && oStatusKeys.contains(7) {
             winLabel?.text = appWins
-            gameOver()
+            setTextColor(winSquares: [1,4,7], color: winColor)
+            stopPlay = true
         } else if oStatusKeys.contains(2) && oStatusKeys.contains(5) && oStatusKeys.contains(8) {
             winLabel?.text = appWins
-            gameOver()
+            setTextColor(winSquares: [2,5,8], color: winColor)
+            stopPlay = true
         } else if oStatusKeys.contains(3) && oStatusKeys.contains(6) && oStatusKeys.contains(9) {
             winLabel?.text = appWins
-            gameOver()
+            setTextColor(winSquares: [3,6,9], color: winColor)
+            stopPlay = true
+        } else if oxStatusKeys.contains(1) && oxStatusKeys.contains(2) && oxStatusKeys.contains(3) && oxStatusKeys.contains(4) && oxStatusKeys.contains(5) && oxStatusKeys.contains(6) && oxStatusKeys.contains(7) && oxStatusKeys.contains(8) && oxStatusKeys.contains(9){
+            winLabel?.text = noWinner
+            stopPlay = true
         } else {
             winLabel?.text = "Keep playing"
         }
-        
+        return stopPlay
     }
 }
 
